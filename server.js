@@ -77,6 +77,16 @@ const upload = multer({ storage });
 
 app.use(`${BASE_PATH}/files`, express.static(DATA_DIR));
 
+app.get("/readyz", async (req, res, next) => {
+  try {
+    await ensureDataDir();
+    await fsp.access(DATA_DIR, fs.constants.W_OK);
+    res.status(200).json({ status: "ok" });
+  } catch (error) {
+    next(error);
+  }
+});
+
 async function listFiles() {
   const dirents = await fsp.readdir(DATA_DIR, { withFileTypes: true });
   const files = await Promise.all(
