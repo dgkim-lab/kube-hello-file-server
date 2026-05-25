@@ -6,8 +6,22 @@ const path = require("path");
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.DATA_DIR || "/data";
+const BASE_PATH = normalizeBasePath(process.env.BASE_PATH || "");
 
 const app = express();
+
+function normalizeBasePath(value) {
+  if (!value || value === "/") {
+    return "";
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  return `/${trimmed.replace(/^\/+|\/+$/g, "")}`;
+}
 
 function escapeHtml(value) {
   return value
@@ -61,7 +75,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-app.use("/files", express.static(DATA_DIR));
+app.use(`${BASE_PATH}/files`, express.static(DATA_DIR));
 
 async function listFiles() {
   const dirents = await fsp.readdir(DATA_DIR, { withFileTypes: true });
@@ -88,7 +102,7 @@ function renderPage(files, uploadError) {
     ? files
         .map((file) => {
           const name = escapeHtml(file.name);
-          const href = `/files/${encodeURIComponent(file.name)}`;
+          const href = `${BASE_PATH}/files/${encodeURIComponent(file.name)}`;
           const sizeKb = (file.size / 1024).toFixed(1);
           const updatedAt = escapeHtml(file.updatedAt.toISOString());
           return `<li><a href="${href}" target="_blank" rel="noreferrer">${name}</a> <span>${sizeKb} KB</span> <span>${updatedAt}</span></li>`;
@@ -209,7 +223,7 @@ function renderPage(files, uploadError) {
         <h1>File Upload Server</h1>
         <p>Upload a file and access it immediately from the list below. Stored files are persisted in <code>${escapeHtml(DATA_DIR)}</code>.</p>
         ${errorBlock}
-        <form action="/upload" method="post" enctype="multipart/form-data">
+        <form action="${BASE_PATH}/upload" method="post" enctype="multipart/form-data">
           <input type="file" name="file" required>
           <button type="submit">Upload</button>
         </form>
@@ -221,7 +235,7 @@ function renderPage(files, uploadError) {
 </html>`;
 }
 
-app.get("/", async (req, res, next) => {
+app.get(`${BASE_PATH}/`, async (req, res, next) => {
   try {
     const files = await listFiles();
     res.type("html").send(renderPage(files));
@@ -230,7 +244,7 @@ app.get("/", async (req, res, next) => {
   }
 });
 
-app.post("/upload", (req, res, next) => {
+app.post(`${BASE_PATH}/upload`, (req, res, next) => {
   upload.single("file")(req, res, (error) => {
     if (error) {
       return next(error);
@@ -238,7 +252,7 @@ app.post("/upload", (req, res, next) => {
     if (!req.file) {
       return res.status(400).type("html").send(renderPage([], "No file was uploaded."));
     }
-    return res.redirect("/");
+    return res.redirect(`${BASE_PATH}/`);
   });
 });
 

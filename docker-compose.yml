@@ -2,6 +2,8 @@ services:
   file-server:
     build:
       context: .
+    environment:
+      BASE_PATH: ${BASE_PATH:-}
     ports:
       - "3000:3000"
     volumes:
